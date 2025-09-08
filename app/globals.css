@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-orange-500 text-white font-sans;
+}
+
+button {
+  @apply rounded-2xl px-4 py-2 font-bold transition-transform hover:scale-105;
+}
