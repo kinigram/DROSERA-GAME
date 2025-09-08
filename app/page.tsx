@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Howl } from "howler";
 import { TwitterShareButton } from "react-share";
@@ -41,16 +41,35 @@ export default function Game() {
   const [finished, setFinished] = useState(false);
   const [started, setStarted] = useState(false);
   const [discordName, setDiscordName] = useState("");
+  const [discordEntered, setDiscordEntered] = useState(false);
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(10);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
   const [confetti, setConfetti] = useState(false);
   const [finalConfetti, setFinalConfetti] = useState(false);
+  const [confettiPosition, setConfettiPosition] = useState<{ x: number; y: number } | null>(null);
+  const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const current = levels[level];
 
+  // Timer logic
   useEffect(() => {
-    const saved = localStorage.getItem("discordName") || "";
-    setDiscordName(saved);
+    if (!started || !discordEntered || finished) return;
+    setTimeLeft(10);
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleTimeout();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [level, started, discordEntered, finished]);
 
+  useEffect(() => {
     if (typeof window !== "undefined") {
       setWindowSize({ width: window.innerWidth, height: window.innerHeight });
       const handleResize = () => setWindowSize({ width: window.innerWidth, height: window.innerHeight });
@@ -59,143 +78,135 @@ export default function Game() {
     }
   }, []);
 
-  const checkAnswer = (option: string) => {
+  const startGame = () => setStarted(true);
+  const handleDiscordSubmit = () => { if (discordName.trim() !== "") setDiscordEntered(true); };
+
+  const handleTimeout = () => {
+    wrongSound.play();
+    nextLevel();
+  };
+
+  const nextLevel = () => {
+    if (level + 1 < levels.length) setLevel(level + 1);
+    else setFinished(true);
+    setSelected(null);
+  };
+
+  const checkAnswer = (option: string, index: number) => {
     setSelected(option);
     if (option === current.answer) {
       correctSound.play();
-      setConfetti(true);
-      setTimeout(() => setConfetti(false), 1500);
+      setScore(score + 1);
 
-      if (level + 1 < levels.length) {
-        setTimeout(() => {
-          setLevel(level + 1);
-          setSelected(null);
-        }, 1000);
-      } else {
-        setFinished(true);
-        setFinalConfetti(true);
-        winSound.play();
-        setTimeout(() => setFinalConfetti(false), 5000);
+      if (optionRefs.current[index]) {
+        const rect = optionRefs.current[index]!.getBoundingClientRect();
+        setConfettiPosition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+        setConfetti(true);
+        setTimeout(() => setConfetti(false), 1500);
       }
+      nextLevel();
     } else {
       wrongSound.play();
-      setTimeout(() => setSelected(null), 800);
+      nextLevel();
     }
+  };
+
+  const replayGame = () => {
+    setLevel(0); setScore(0); setFinished(false); setSelected(null); setDiscordEntered(false); setDiscordName(""); setStarted(false);
   };
 
   const progressPercent = ((level + 1) / levels.length) * 100;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-start p-6 animate-gradientGlow bg-gradient-to-r from-yellow-400 via-orange-600 to-black">
-      {/* Progress Bar */}
-      {started && !finished && (
+      {started && discordEntered && !finished && (
         <div className="w-full max-w-2xl h-4 bg-gray-300 rounded-full mt-4 mb-6">
-          <div
-            className="h-4 rounded-full bg-green-500 transition-all duration-500"
-            style={{ width: `${progressPercent}%` }}
-          />
+          <div className="h-4 rounded-full bg-green-500 transition-all duration-500" style={{ width: `${progressPercent}%` }} />
         </div>
       )}
 
-      {/* Confetti */}
-      {confetti && <Confetti width={windowSize.width} height={windowSize.height} numberOfPieces={100} />}
+      {confetti && confettiPosition && <Confetti width={windowSize.width} height={windowSize.height} numberOfPieces={100} recycle={false} confettiSource={{ x: confettiPosition.x, y: confettiPosition.y, w: 0, h: 0 }} />}
       {finalConfetti && <Confetti width={windowSize.width} height={windowSize.height} numberOfPieces={500} />}
 
       {!started ? (
-        <motion.div
-          className="text-center max-w-xl p-10 rounded-3xl"
-          animate={{ backgroundColor: ["#000000", "#FF6600", "#FFFF00", "#000000"] }}
-          transition={{ duration: 4, repeat: Infinity }}
-        >
+        <motion.div className="text-center max-w-xl p-10 rounded-3xl" animate={{ backgroundColor: ["#000000", "#FF6600", "#FFFF00", "#000000"] }} transition={{ duration: 4, repeat: Infinity }}>
           <h1 className="text-6xl font-extrabold mb-2 text-white">DROSERA NETWORK</h1>
           <h2 className="text-5xl font-bold mb-4 text-white">TRAPNET</h2>
           <p className="text-lg mb-6 text-white">BY BIG KAYY</p>
-          <p className="mb-6 text-white">
-            Welcome to the TrapNet Game 🎮. Test your knowledge on Drosera and crypto safety across 20 levels.
-            Can you become a <strong>Certified Trapper 😎</strong>?
-          </p>
+          <p className="mb-6 text-white">Welcome to the TrapNet Game 🎮. Test your knowledge on Drosera and crypto safety across 20 levels. Can you become a <strong>Certified Trapper 😎</strong>?</p>
           <div className="flex flex-col gap-4">
-            <button
-              onClick={() => setStarted(true)}
-              className="bg-orange-600 px-6 py-3 rounded-xl text-lg hover:bg-orange-500"
-            >
-              Start Game
-            </button>
-            <a
-              href="https://discord.gg/drosera"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-[#5865F2] px-6 py-3 rounded-xl text-lg text-white hover:bg-blue-500"
-            >
-              Join the Drosera Discord Community
-            </a>
+            <button onClick={startGame} className="bg-orange-600 px-6 py-3 rounded-xl text-lg hover:bg-orange-500">Start Game</button>
+            <a href="https://discord.gg/drosera" target="_blank" rel="noopener noreferrer" className="bg-[#5865F2] px-6 py-3 rounded-xl text-lg text-white hover:bg-blue-500">Join the Drosera Discord Community</a>
           </div>
         </motion.div>
+      ) : !discordEntered ? (
+        <div className="max-w-xl w-full text-center mt-8">
+          <h2 className="text-2xl font-bold mb-4 text-white">Enter Your Discord Name</h2>
+          <input type="text" value={discordName} onChange={(e) => setDiscordName(e.target.value)} className="w-full p-3 rounded-xl mb-4 text-black" placeholder="Discord Username" />
+          <button onClick={handleDiscordSubmit} className="bg-green-500 px-6 py-3 rounded-xl text-lg hover:bg-green-400">Continue</button>
+        </div>
       ) : !finished ? (
         <div className="max-w-2xl w-full text-center">
-          {discordName && (
-            <button className="mb-4 bg-yellow-400 px-4 py-2 rounded-xl text-black font-bold">
-              {discordName}
-            </button>
-          )}
-          <h2 className="text-2xl font-bold mb-6 text-white">
-            Level {level + 1} of {levels.length}
-          </h2>
+          {discordName && <button className="mb-4 bg-yellow-400 px-4 py-2 rounded-xl text-black font-bold">{discordName}</button>}
+          <h2 className="text-2xl font-bold mb-2 text-white">Level {level + 1} of {levels.length}</h2>
+          <p className="mb-2 text-lg text-white">Time Left: {timeLeft}s</p>
           <p className="mb-6 text-lg text-white">{current.question}</p>
           <div className="space-y-4">
-            {current.options.map((option) => (
-              <button
-                key={option}
-                onClick={() => checkAnswer(option)}
-                className={`w-full p-4 rounded-xl border-2 transition ${
-                  selected === option
-                    ? option === current.answer
-                      ? "bg-green-600 border-black"
-                      : "bg-red-600 border-black"
-                    : "bg-orange-500 hover:bg-orange-400 border-black"
-                }`}
-              >
+            {current.options.map((option, index) => (
+              <button key={option} ref={(el) => (optionRefs.current[index] = el)} onClick={() => checkAnswer(option, index)}
+                className={`w-full p-4 rounded-xl border-2 transition ${selected === option ? option === current.answer ? "bg-green-600 border-black" : "bg-red-600 border-black" : "bg-orange-500 hover:bg-orange-400 border-black"}`}>
                 {option}
               </button>
             ))}
           </div>
         </div>
       ) : (
-        <div className="text-center max-w-xl relative">
-          <h1 className="text-5xl font-bold mb-4 text-white">🎉 Congratulations! 🎉</h1>
-          <p className="mb-4 text-white">
-            You’ve completed all 20 levels and are now a <strong>Certified Trapper 😎</strong>.
+        <div className="text-center max-w-xl mt-8">
+          <Confetti width={windowSize.width} height={windowSize.height
+            {finalConfetti && <Confetti width={windowSize.width} height={windowSize.height} numberOfPieces={500} />}
+
+          <h1 className="text-5xl font-bold mb-4 text-white">🎉 Game Over 🎉</h1>
+          <p className="text-2xl mb-6 text-white">
+            Your Score: {score}/{levels.length}
           </p>
-          <TwitterShareButton
-            url="https://drosera-game-j4j9.vercel.app/"
-            title="Hi I just completed the Trap Net Game by @kinigramm and I'm now a Certified Trapper 😎 join and play too 👉"
-          >
-            <button className="bg-blue-500 px-6 py-3 rounded-xl text-lg hover:bg-blue-400 mb-4">
-              Share on Twitter
-            </button>
-          </TwitterShareButton>
-          <a
-            href="https://discord.gg/drosera"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-[#5865F2] text-white px-6 py-4 rounded-xl mt-6 inline-block"
-          >
-            Join the Drosera Network Community on Discord 🚀
-          </a>
+
+          {score === levels.length ? (
+            <>
+              <p className="text-xl mb-6 text-white">Perfect! You are now a Certified Trapper 😎</p>
+              <TwitterShareButton
+                url="https://drosera-game-j4j9.vercel.app/"
+                title={`Hi! I just completed the TrapNet Game by @kinigramm and scored 20/20. I'm now a Certified Trapper 😎! Join and play too 👉`}
+              >
+                <button className="bg-blue-500 px-6 py-3 rounded-xl text-lg hover:bg-blue-400 mb-4">Share on X</button>
+              </TwitterShareButton>
+              <a
+                href="https://discord.gg/drosera"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-[#5865F2] px-6 py-3 rounded-xl text-lg text-white hover:bg-blue-500 mb-4 inline-block"
+              >
+                Follow on Discord
+              </a>
+              <button
+                onClick={replayGame}
+                className="bg-green-500 px-6 py-3 rounded-xl text-lg hover:bg-green-400"
+              >
+                Replay Game
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-xl mb-6 text-white">You didn’t complete all levels. Try again to get 20/20!</p>
+              <button
+                onClick={replayGame}
+                className="bg-green-500 px-6 py-3 rounded-xl text-lg hover:bg-green-400"
+              >
+                Replay Game
+              </button>
+            </>
+          )}
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes gradientGlow {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        .animate-gradientGlow {
-          background-size: 400% 400%;
-          animation: gradientGlow 10s ease infinite;
-        }
-      `}</style>
     </div>
   );
-        }
+}
