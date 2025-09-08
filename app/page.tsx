@@ -1,425 +1,147 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Howl } from "howler";
-import { TwitterShareButton, TwitterIcon } from "react-share";
+import { TwitterShareButton } from "react-share";
+import Confetti from "react-confetti";
 
 // ----------------- Sounds -----------------
-const soundCorrect = new Howl({ src: ["/sounds/correct.mp3"], volume: 0.6 });
-const soundWrong = new Howl({ src: ["/sounds/wrong.mp3"], volume: 0.6 });
-const soundPass = new Howl({ src: ["/sounds/pass.mp3"], volume: 0.7 });
-const soundFinish = new Howl({ src: ["/sounds/finish.mp3"], volume: 0.8 });
+const correctSound = new Howl({ src: ["/sounds/correct.mp3"] });
+const wrongSound = new Howl({ src: ["/sounds/wrong.mp3"] });
+const winSound = new Howl({ src: ["/sounds/win.mp3"] });
 
-// ----------------- Confetti -----------------
-function Confetti({ show }: { show: boolean }) {
-  return (
-    <AnimatePresence>
-      {show && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="pointer-events-none fixed inset-0 z-40"
-        >
-          {Array.from({ length: 30 }).map((_, i) => {
-            const left = Math.random() * 100;
-            const delay = Math.random() * 0.6;
-            const size = 6 + Math.random() * 12;
-            const bg = ["#FF4D4F", "#FFD166", "#06D6A0", "#3A86FF", "#FF7BAC"][
-              Math.floor(Math.random() * 5)
-            ];
-            return (
-              <motion.div
-                key={i}
-                initial={{ y: -50, opacity: 0 }}
-                animate={{
-                  y: 700,
-                  rotate: Math.random() * 360,
-                  opacity: 1,
-                }}
-                transition={{ duration: 2.2, delay }}
-                style={{ left: `${left}%` }}
-                className="absolute"
-              >
-                <div
-                  style={{
-                    width: size,
-                    height: size,
-                    background: bg,
-                    borderRadius: 4,
-                    boxShadow: "0 4px 8px rgba(0,0,0,0.12)",
-                  }}
-                />
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-// ----------------- Questions -----------------
-const questions = [
-  {
-    question: "Who runs the Drosera client and responds to suspicious activity?",
-    options: [
-      "Network Operators",
-      "Only Ethereum Foundation Developers",
-      "Random MetaMask Users",
-    ],
-    answer: "Network Operators",
-  },
-  {
-    question: "How does Drosera incentivize participants to react to threats?",
-    options: ["Free NFTs", "Rewards for timely trap activation", "DAO Voting"],
-    answer: "Rewards for timely trap activation",
-  },
-  {
-    question: "Which projects are already collaborating with Drosera on testnet?",
-    options: ["Ion Protocol, Etherfi, Gravita", "Binance, Coinbase, Kraken"],
-    answer: "Ion Protocol, Etherfi, Gravita",
-  },
-  {
-    question: "What is the role of traps in the Drosera system?",
-    options: [
-      "Detect suspicious activity and trigger emergency actions",
-      "Generate new tokens for participants",
-    ],
-    answer: "Detect suspicious activity and trigger emergency actions",
-  },
-  {
-    question: "What type of attack can Drosera help stop?",
-    options: [
-      "Front-running",
-      "Smart contract rug pulls",
-      "Wallet drains",
-      "All of the above",
-    ],
-    answer: "All of the above",
-  },
-  {
-    question: "What is the first step when a trap detects suspicious activity?",
-    options: ["Pause protocol", "Mint new tokens", "Notify Coinbase"],
-    answer: "Pause protocol",
-  },
-  {
-    question: "Who decides when a trap gets triggered?",
-    options: ["Community operators", "Binance", "Ethereum miners"],
-    answer: "Community operators",
-  },
-  {
-    question: "How many tries does a player get per level in Trap Net?",
-    options: ["1", "2", "Unlimited"],
-    answer: "2",
-  },
-  {
-    question: "Drosera works as a security layer for what?",
-    options: ["DeFi protocols", "Twitter", "YouTube"],
-    answer: "DeFi protocols",
-  },
-  {
-    question: "Which of these is a benefit of Drosera traps?",
-    options: [
-      "Early detection of suspicious transactions",
-      "Earning yield from locked assets",
-      "Printing free ETH",
-    ],
-    answer: "Early detection of suspicious transactions",
-  },
-  {
-    question: "What happens after you correctly answer a level in Trap Net?",
-    options: ["You unlock the next level", "You win ETH", "The game ends"],
-    answer: "You unlock the next level",
-  },
-  {
-    question: "Drosera rewards participants for…?",
-    options: ["Sleeping", "Timely threat response", "DAO memes"],
-    answer: "Timely threat response",
-  },
-  {
-    question: "What does 'Trap Activation' mean?",
-    options: [
-      "Shutting down a protocol permanently",
-      "Temporarily freezing to stop attacks",
-    ],
-    answer: "Temporarily freezing to stop attacks",
-  },
-  {
-    question: "Drosera focuses on defending against what kind of threats?",
-    options: ["On-chain threats", "Physical theft", "Password guessing"],
-    answer: "On-chain threats",
-  },
-  {
-    question: "Which of these is NOT part of Drosera?",
-    options: ["Traps", "Operators", "Validators", "Spotify playlists"],
-    answer: "Spotify playlists",
-  },
-  {
-    question: "When traps activate, what is protected?",
-    options: ["User funds and protocol safety", "Netflix accounts"],
-    answer: "User funds and protocol safety",
-  },
-  {
-    question: "Drosera combines incentives with…?",
-    options: ["Security monitoring", "Gaming skins", "Trading bots"],
-    answer: "Security monitoring",
-  },
-  {
-    question: "What happens if suspicious activity is ignored?",
-    options: [
-      "Nothing happens",
-      "Attack might succeed and funds can be drained",
-      "Users get free airdrops",
-    ],
-    answer: "Attack might succeed and funds can be drained",
-  },
-  {
-    question: "What is Drosera’s ultimate mission?",
-    options: [
-      "Secure DeFi from real-time threats",
-      "Build the best meme coins",
-      "Sell NFTs",
-    ],
-    answer: "Secure DeFi from real-time threats",
-  },
-  {
-    question: "After completing all 20 levels in Trap Net, what do you become?",
-    options: ["Certified Trapper", "Ethereum Developer", "Crypto Millionaire"],
-    answer: "Certified Trapper",
-  },
+// ----------------- Levels -----------------
+const levels = [
+  { question: "Who runs the Drosera client and responds to suspicious activity?", options: ["Network Operators", "Ethereum Foundation", "Random MetaMask Users"], answer: "Network Operators" },
+  { question: "How does Drosera incentivize participants to react to threats?", options: ["Free NFTs", "DAO Voting", "Rewards for timely trap activation"], answer: "Rewards for timely trap activation" },
+  { question: "Which projects are already collaborating with Drosera on Testnet?", options: ["Binance, Coinbase, Kraken", "Ion Protocol, Etherfi, Gravita", "Uniswap, Aave, Curve"], answer: "Ion Protocol, Etherfi, Gravita" },
+  { question: "What is the role of Traps in the Drosera system?", options: ["Detect suspicious activity and trigger emergency actions", "Create memes on Discord", "Generate new tokens for participants"], answer: "Detect suspicious activity and trigger emergency actions" },
+  { question: "Drosera focuses on securing which ecosystem first?", options: ["Ethereum & L2s", "Bitcoin Mining", "Solana Only"], answer: "Ethereum & L2s" },
+  { question: "What happens when a trap is triggered?", options: ["Funds are instantly protected", "NFT airdrop happens", "Nothing, it's just logged"], answer: "Funds are instantly protected" },
+  { question: "What’s a common crypto scam Drosera can help mitigate?", options: ["Pump-and-dump", "Wallet drain", "Memecoin hype"], answer: "Wallet drain" },
+  { question: "Who benefits most from Drosera’s protection system?", options: ["DeFi protocols & users", "Traditional banks", "Video game companies"], answer: "DeFi protocols & users" },
+  { question: "What happens if no operator responds to a trap?", options: ["Trap expires after a timeout", "ETH airdrop", "Permanent ban"], answer: "Trap expires after a timeout" },
+  { question: "Drosera helps secure what type of crypto infrastructure?", options: ["Bridges, L2s, DeFi protocols", "Mining rigs", "NFT marketplaces only"], answer: "Bridges, L2s, DeFi protocols" },
+  { question: "Which one is NOT a risk Drosera directly protects against?", options: ["Smart contract exploits", "Phishing emails", "Protocol drains"], answer: "Phishing emails" },
+  { question: "What powers the decision-making in Drosera traps?", options: ["Community operators", "AI only", "Government regulations"], answer: "Community operators" },
+  { question: "Why is decentralization important in Drosera?", options: ["No single point of failure", "Faster airdrops", "Cheaper gas fees"], answer: "No single point of failure" },
+  { question: "Which one best describes Drosera?", options: ["A decentralized security network", "A meme coin project", "A crypto wallet app"], answer: "A decentralized security network" },
+  { question: "How do traps get triggered?", options: ["By suspicious on-chain activity", "By meme votes", "Randomly every hour"], answer: "By suspicious on-chain activity" },
+  { question: "Drosera’s incentives are designed to reward:", options: ["Timely response to traps", "Buying NFTs", "Holding ETH only"], answer: "Timely response to traps" },
+  { question: "Which group is critical to Drosera’s ecosystem?", options: ["Operators", "Gamers", "Miners"], answer: "Operators" },
+  { question: "What’s the ultimate goal of Drosera?", options: ["Secure DeFi and protect users", "Launch new meme coins", "Centralize Ethereum security"], answer: "Secure DeFi and protect users" },
+  { question: "What type of attack did your brother lose $130 to, that Drosera helps prevent?", options: ["Wallet drain", "51% attack", "Rugpull on Solana"], answer: "Wallet drain" },
+  { question: "Completing this TrapNet Game makes you a certified?", options: ["Trapper 😎", "Miner", "NFT flipper"], answer: "Trapper 😎" },
 ];
 
-// ----------------- Main Game -----------------
-export default function Page() {
-  const [route, setRoute] = useState<"splash" | "enter" | "play" | "finish">(
-    "splash"
-  );
-  const [name, setName] = useState("");
+export default function Game() {
   const [level, setLevel] = useState(0);
-  const [tries, setTries] = useState(2);
   const [selected, setSelected] = useState<string | null>(null);
-  const [revealed, setRevealed] = useState(false);
-  const [confetti, setConfetti] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [started, setStarted] = useState(false);
+  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
 
-  function startGame() {
-    if (!name.trim()) return alert("Enter your Discord name to continue.");
-    setLevel(0);
-    setTries(2);
-    setRoute("play");
-  }
+  const current = levels[level];
 
-  function submitAnswer(opt: string) {
-    if (revealed) return;
-    setSelected(opt);
-    setRevealed(true);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+      const handleResize = () => setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }
+  }, []);
 
-    const q = questions[level];
-    if (opt === q.answer) {
-      soundCorrect.play();
-      soundPass.play();
-      setConfetti(true);
-      setTimeout(() => setConfetti(false), 2500);
-
-      if (level === questions.length - 1) {
-        soundFinish.play();
-        setTimeout(() => setRoute("finish"), 600);
-      } else {
+  const checkAnswer = (option: string) => {
+    setSelected(option);
+    if (option === current.answer) {
+      correctSound.play();
+      if (level + 1 < levels.length) {
         setTimeout(() => {
-          setLevel((l) => l + 1);
+          setLevel(level + 1);
           setSelected(null);
-          setRevealed(false);
-          setTries(2);
-        }, 1200);
+        }, 1000);
+      } else {
+        setFinished(true);
+        winSound.play();
       }
     } else {
-      soundWrong.play();
-      const left = tries - 1;
-      setTries(left);
-      if (left <= 0) {
-        setTimeout(() => {
-          alert("Out of tries. Restarting level.");
-          setSelected(null);
-          setRevealed(false);
-          setTries(2);
-        }, 600);
-      }
+      wrongSound.play();
+      setTimeout(() => setSelected(null), 800);
     }
-  }
-
-  const pageVariants = {
-    hidden: { opacity: 0, y: 8 },
-    enter: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -8 },
   };
 
   return (
-    <div className="min-h-screen font-sans bg-gradient-to-b from-[#fff8ef] to-white">
-      <Confetti show={confetti} />
-      <AnimatePresence mode="wait">
-        {route === "splash" && (
-          <motion.div
-            key="splash"
-            initial="hidden"
-            animate="enter"
-            exit="exit"
-            variants={pageVariants}
-            transition={{ duration: 0.35 }}
-            className="min-h-screen flex flex-col items-center justify-center bg-[#ff7000] p-8"
+    <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
+      {!started ? (
+        <motion.div
+          className="text-center max-w-xl relative"
+          animate={{ backgroundColor: ["#000000", "#FF6600", "#000000"] }}
+          transition={{ duration: 4, repeat: Infinity }}
+          style={{ padding: "40px", borderRadius: "20px" }}
+        >
+          <h1 className="text-5xl font-bold mb-4">TRAPNET</h1>
+          <p className="text-lg mb-2">BY BIG KAYY</p>
+          <p className="mb-6">
+            Welcome to the TrapNet Game 🎮.  
+            Test your knowledge on Drosera and crypto safety across 20 levels.  
+            Can you become a **Certified Trapper**?
+          </p>
+          <button
+            onClick={() => setStarted(true)}
+            className="bg-orange-600 px-6 py-3 rounded-xl text-lg hover:bg-orange-500"
           >
-            <Image
-              src="/logo.png"
-              alt="Trap Net"
-              width={300}
-              height={300}
-              className="mb-6"
-            />
-            <h1 className="text-6xl font-extrabold text-white tracking-tight">
-              TRAP NET
-            </h1>
-            <p className="text-white/90 mt-3 mb-6 max-w-xl text-center">
-              Become a Certified Trapper — protect protocols by learning to spot
-              threats.
-            </p>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter Discord name"
-              className="p-3 rounded-xl text-lg mb-4 w-64"
-            />
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={startGame}
-              className="bg-red-600 hover:bg-red-700 text-white px-10 py-4 rounded-2xl text-xl font-bold shadow-xl"
-            >
-              Start Game
-            </motion.button>
-          </motion.div>
-        )}
-
-        {route === "play" && (
-          <motion.div
-            key="play"
-            initial="hidden"
-            animate="enter"
-            exit="exit"
-            variants={pageVariants}
-            transition={{ duration: 0.28 }}
-            className="min-h-screen p-8 flex items-start"
-          >
-            <div className="max-w-3xl mx-auto w-full bg-white rounded-2xl p-6 shadow-2xl">
-              <div className="flex items-center gap-4 mb-4">
-                <Image src="/logo.png" alt="logo" width={80} height={80} />
-                <div>
-                  <div className="text-xl font-bold">
-                    Level {level + 1} of {questions.length}
-                  </div>
-                  <div className="text-sm text-neutral-500">
-                    Tries left: <span className="font-medium">{tries}</span>
-                  </div>
-                </div>
-              </div>
-
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mb-4 text-neutral-700 text-lg"
+            Start Game
+          </button>
+        </motion.div>
+      ) : !finished ? (
+        <div className="max-w-2xl w-full">
+          <h2 className="text-2xl font-bold mb-6">
+            Level {level + 1} of {levels.length}
+          </h2>
+          <p className="mb-6 text-lg">{current.question}</p>
+          <div className="space-y-4">
+            {current.options.map((option) => (
+              <button
+                key={option}
+                onClick={() => checkAnswer(option)}
+                className={`w-full p-4 rounded-xl border-2 transition ${
+                  selected === option
+                    ? option === current.answer
+                      ? "bg-green-600 border-black"
+                      : "bg-red-600 border-black"
+                    : "bg-orange-500 hover:bg-orange-400 border-black"
+                }`}
               >
-                {questions[level].question}
-              </motion.p>
-
-              <div className="grid gap-3">
-                {questions[level].options.map((opt) => {
-                  const isSelected = selected === opt;
-                  const isAnswer = revealed && opt === questions[level].answer;
-                  const isWrong = revealed && isSelected && !isAnswer;
-                  return (
-                    <motion.button
-                      whileHover={{ scale: revealed ? 1 : 1.02 }}
-                      key={opt}
-                      onClick={() => submitAnswer(opt)}
-                      disabled={revealed}
-                      className={`w-full text-left px-4 py-4 rounded-2xl border transition-all ${
-                        isAnswer
-                          ? "border-green-500 bg-green-50"
-                          : isWrong
-                          ? "border-red-500 bg-red-50"
-                          : "bg-white border-neutral-200"
-                      }`}
-                    >
-                      {opt}
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {route === "finish" && (
-          <motion.div
-            key="finish"
-            initial="hidden"
-            animate="enter"
-            exit="exit"
-            variants={pageVariants}
-            transition={{ duration: 0.28 }}
-            className="min-h-screen flex items-center justify-center p-8"
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="text-center max-w-xl relative">
+          <Confetti width={windowSize.width} height={windowSize.height} />
+          <h1 className="text-4xl font-bold mb-4">🎉 Congratulations! 🎉</h1>
+          <p className="mb-4">
+            You’ve completed all 20 levels and are now a **Certified Trapper 😎**.
+          </p>
+          <TwitterShareButton
+            url="https://drosera-game-j4j9.vercel.app/"
+            title="Hi I just completed the Trap Net Game by @kinigramm and I'm now a Certified Trapper 😎 join and play too 👉"
           >
-            <div className="max-w-2xl w-full text-center bg-white rounded-2xl p-8 shadow-2xl">
-              <Image
-                src="/logo.png"
-                alt="logo"
-                width={200}
-                height={200}
-                className="mx-auto mb-6"
-              />
-              <h2 className="text-3xl font-bold mb-4">
-                YOU ARE NOW A CERTIFIED TRAPPER 🎖️
-              </h2>
-              <p className="mb-6">
-                Congrats {name} — you’ve completed all levels and proven your
-                instincts.
-              </p>
-
-              <div className="flex items-center justify-center gap-4 mb-6">
-                <TwitterShareButton
-                  title={`I just became a Certified Trapper on Trap Net by Drosera Network! 🛡️ Try it here:`}
-                  url={typeof window !== "undefined" ? window.location.href : ""}
-                >
-                  <TwitterIcon size={48} round />
-                </TwitterShareButton>
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  onClick={() => {
-                    navigator.clipboard?.writeText(
-                      typeof window !== "undefined" ? window.location.href : ""
-                    );
-                    alert("Link copied to clipboard");
-                  }}
-                  className="px-4 py-2 rounded-2xl border"
-                >
-                  Copy Link
-                </motion.button>
-              </div>
-
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                onClick={() => {
-                  setRoute("splash");
-                  setLevel(0);
-                  setTries(2);
-                }}
-                className="px-5 py-3 rounded-2xl border"
-              >
-                Play Again
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <button className="bg-blue-500 px-6 py-3 rounded-xl text-lg hover:bg-blue-400 mb-4">
+              Share on Twitter
+            </button>
+          </TwitterShareButton>
+          <div
+            className="bg-[#5865F2] text-white px-6 py-4 rounded-xl mt-6"
+            style={{ display: "inline-block" }}
+          >
+            Join the TrapNet community on Discord 🚀
+          </div>
+        </div>
+      )}
     </div>
   );
-  }
+    }
